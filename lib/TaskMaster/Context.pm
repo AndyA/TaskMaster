@@ -92,7 +92,10 @@ sub is_dirty {
 sub _should_run {
   my ( $self, $step ) = @_;
 
-  return 1 if $self->force;
+  if ( $self->force ) {
+    delete @{$_}{ 'if', 'changed' } for @{ $step->opts };
+    return 1;
+  }
 
   for my $opt ( @{ $step->opts } ) {
     return
