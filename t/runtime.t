@@ -25,8 +25,8 @@ my @names = qw(
   my $rt   = TaskMaster::RunTime->new;
   my $done = 0;
   $rt->task( "hello", sub { $done++ } );
-  $rt->run_task("hello");
-  $rt->run_task("hello");
+  $rt->run("hello");
+  $rt->run("hello");
   is $done, 1, "run once";
 }
 
@@ -113,13 +113,39 @@ my @names = qw(
   $rt->task( "cc",  { changed => "**/*.c" },  $handler );
   $rt->task( "default", ["pm", "ini", "cc"] );
 
-  $rt->run_task("default");
+  $rt->run;
 
   my @t = grep { /\.t$/ } @names;
 
   eq_or_diff [@done],
    ['pm', [grep { /\.pm$/ } @names], [@t], 'ini', ['dist.ini'], [@t]],
    "glob: expected tasks run";
+}
+
+{
+  my $rt      = TaskMaster::RunTime->new;
+  my @done    = ();
+  my $handler = sub { push @done, shift->name };
+
+  $rt->task( "setup",    $handler );
+  $rt->task( "cleanup",  $handler );
+  $rt->task( "complete", $handler );
+  $rt->task(
+    "lifecycle",
+    ["setup"],
+    sub {
+      my $ctx = shift;
+      $ctx->defer( "cleanup", "complete" );
+      $handler->($ctx);
+    }
+  );
+
+  $rt->task( "default", ["lifecycle"] );
+
+  $rt->run;
+
+  eq_or_diff [@done], ["setup", "lifecycle", "cleanup", "complete"],
+   "defer: tasks run";
 }
 
 done_testing;

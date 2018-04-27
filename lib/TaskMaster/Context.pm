@@ -6,6 +6,7 @@ use v5.10;
 
 use Moose;
 
+use Carp qw( croak );
 use TaskMaster::Glob;
 
 =head1 NAME
@@ -107,6 +108,14 @@ sub _parse_options {
   }
 }
 
+sub _check_options {
+  my ( $self, $step ) = @_;
+  my %unk = ();
+  $unk{$_}++ for map { keys %$_ } @{ $step->opts };
+  croak "Unknown options: ", join( ", ", sort keys %unk )
+   if keys %unk;
+}
+
 sub _run_deps {
   my ( $self, $step ) = @_;
   for my $dep ( @{ $step->deps } ) {
@@ -120,6 +129,7 @@ sub run_step {
   return unless $self->_should_run($step);
   $self->_state('run');
   $self->_parse_options($step);
+  $self->_check_options($step);
   $self->_run_deps($step);
 
   my @code = @{ $step->code };

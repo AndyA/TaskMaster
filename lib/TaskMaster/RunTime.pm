@@ -121,12 +121,17 @@ sub _pop_context {
   $self->_context( $self->_context->parent );
 }
 
+sub has_task {
+  my ( $self, $name ) = @_;
+  return $self->_tasks->{$name};
+}
+
 sub run_task {
   my $self = shift;
   my $name = shift;
 
   return if $self->_done->{$name}++;
-  my $task = $self->_tasks->{$name};
+  my $task = $self->has_task($name);
 
   croak "No task $name"
    unless defined $task;
@@ -136,6 +141,23 @@ sub run_task {
     $ctx->run_step($step);
     $self->_pop_context;
   }
+
+  return $self;
+}
+
+sub run {
+  my ( $self, @args ) = @_;
+
+  croak "Can't call run inside task"
+   if $self->_context->depth;
+
+  push @args, "default"
+   if !@args && $self->has_task("default");
+
+  $self->run_task($_) for @args;
+  $self->run_task($_) for @{ $self->_at_exit };
+
+  return $self;
 }
 
 no Moose;
