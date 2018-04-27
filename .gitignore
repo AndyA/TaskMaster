@@ -1,0 +1,6 @@
+.*.sw?
+.AppleDouble
+.DS_Store
+/.build
+/.prove
+/Session.vim
