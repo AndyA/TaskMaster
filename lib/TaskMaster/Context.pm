@@ -31,8 +31,10 @@ has rt => (
   isa      => 'TaskMaster::RunTime',
   required => 1,
   weak_ref => 1,
-  handles =>
-   ['force', 'flatten', 'run_task', 'defer', 'dirty', 'dirty_list'],
+  handles  => [
+    'force', 'flatten',    'run_task', 'defer',
+    'dirty', 'dirty_list', 'log',      'task_names'
+  ],
 );
 
 has depth => (
@@ -52,6 +54,12 @@ has _state => (
   isa     => 'Str',
   default => 'init'
 );
+
+with qw(
+ TaskMaster::Role::Logging
+);
+
+sub context { shift }
 
 sub ignore {
   my $self = shift;
@@ -134,10 +142,24 @@ sub run_step {
 
   my @code = @{ $step->code };
   if (@code) {
-    #    my @d = @{ $step->desc };
+    my @d = @{ $step->desc };
+    $self->mention( "# ", join " ", @d ) if @d;
     $_->($self) for @code;
   }
   $self->_state('done');
+}
+
+sub cmd {
+  my ( $self, @cmd ) = @_;
+  $self->mention( "> ", join " ", @cmd );
+  my $rc = system @cmd;
+  return unless $rc;
+  if ( $self->should_ignore($rc) ) {
+    $self->warning("Failed: $rc");
+    return;
+  }
+  $self->error("Failed: $rc");
+  croak "Failed: $rc";
 }
 
 no Moose;

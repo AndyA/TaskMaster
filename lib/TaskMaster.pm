@@ -18,7 +18,7 @@ TaskMaster - The TaskMaster task runner
 use base qw( Exporter );
 
 our @EXPORT_OK = qw(
- rt task dirty is_dirty dirty_list matches run defer
+ rt task dirty is_dirty dirty_list matches run cmd defer
 );
 
 our %EXPORT_TAGS = ( all => [@EXPORT_OK] );
@@ -31,6 +31,7 @@ sub is_dirty(@)  { rt->is_dirty(@_) }
 sub dirty_list() { rt->dirty_list }
 sub matches()    { rt->matches }
 sub run(@)       { rt->run(@_) }
+sub cmd(@)       { rt->cmd(@_) }
 sub defer(@)     { rt->defer(@_) }
 
 1;

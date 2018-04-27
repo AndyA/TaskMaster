@@ -148,6 +148,26 @@ my @names = qw(
    "defer: tasks run";
 }
 
+{
+  # Logging
+  my $rt = TaskMaster::RunTime->new;
+
+  my %log_levels = (
+    debug   => 0,
+    verbose => 1,
+    mention => 2,
+    warning => 3,
+    error   => 4,
+  );
+
+  while ( my ( $name, $level ) = each %log_levels ) {
+    $rt->log_level($name);
+    is $rt->log_level, $level, "log level $name is $level";
+    $rt->log_level($level);
+    is $rt->log_level, $level, "log level is $level";
+  }
+}
+
 done_testing;
 
 # vim:ts=2:sw=2:et:ft=perl

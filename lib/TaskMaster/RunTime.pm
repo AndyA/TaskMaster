@@ -9,6 +9,7 @@ use Moose;
 use Carp qw( croak );
 
 use TaskMaster::Context;
+use TaskMaster::Logger::Null;
 use TaskMaster::Step;
 
 =head1 NAME
@@ -17,19 +18,19 @@ TaskMaster::RunTime - TaskMaster runtime engine
 
 =cut
 
-has ['_tasks', '_done', '_context'] => (
+has ['_tasks', '_done', 'context'] => (
   is      => 'ro',
   isa     => 'HashRef',
   default => sub { {} }
 );
 
-has _context => (
+has context => (
   is      => 'rw',
   isa     => 'TaskMaster::Context',
   default => sub {
     TaskMaster::Context->new( name => "<ROOT>", depth => 0, rt => shift );
   },
-  handles => ['is_dirty', 'matches'],
+  handles => ['is_dirty', 'matches', 'cmd'],
 );
 
 has '_at_exit' => (
@@ -46,10 +47,21 @@ has '_dirty' => (
   default => sub { {} },
 );
 
+has logger => (
+  is       => 'rw',
+  required => 1,
+  default  => sub { TaskMaster::Logger::Null->new },
+  handles  => ['log'],
+);
+
 has force => (
-  is      => 'ro',
+  is      => 'rw',
   isa     => 'Bool',
   default => 0,
+);
+
+with qw(
+ TaskMaster::Role::Logging
 );
 
 sub dirty {
@@ -100,10 +112,12 @@ sub task {
   return $self;
 }
 
+sub task_names { sort keys %{ shift->_tasks } }
+
 sub _push_context {
   my ( $self, $name ) = @_;
 
-  my $parent = $self->_context;
+  my $parent = $self->context;
 
   my $ctx = TaskMaster::Context->new(
     parent => $parent,
@@ -112,13 +126,13 @@ sub _push_context {
     rt     => $self,
   );
 
-  $self->_context($ctx);
+  $self->context($ctx);
   return $ctx;
 }
 
 sub _pop_context {
   my $self = shift;
-  $self->_context( $self->_context->parent );
+  $self->context( $self->context->parent );
 }
 
 sub has_task {
@@ -136,6 +150,7 @@ sub run_task {
   croak "No task $name"
    unless defined $task;
 
+  $self->verbose("Running $name");
   for my $step (@$task) {
     my $ctx = $self->_push_context($name);
     $ctx->run_step($step);
@@ -149,7 +164,7 @@ sub run {
   my ( $self, @args ) = @_;
 
   croak "Can't call run inside task"
-   if $self->_context->depth;
+   if $self->context->depth;
 
   push @args, "default"
    if !@args && $self->has_task("default");
