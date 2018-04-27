@@ -15,8 +15,13 @@ TaskMaster - The TaskMaster task runner
 
 use base qw( Exporter );
 
-our @EXPORT_OK = qw();
+our @EXPORT_OK = qw( rt );
 our %EXPORT_TAGS = ( all => [@EXPORT_OK] );
+
+sub rt() {
+  state $rt;
+  return $rt //= TaskMaster::RunTime->new;
+}
 
 1;
 

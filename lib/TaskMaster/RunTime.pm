@@ -29,6 +29,7 @@ has _context => (
   default => sub {
     TaskMaster::Context->new( name => "<ROOT>", depth => 0, rt => shift );
   },
+  handles => ['is_dirty', 'matches'],
 );
 
 has '_at_exit' => (
@@ -40,11 +41,9 @@ has '_at_exit' => (
 );
 
 has '_dirty' => (
-  traits  => ['Array'],
   is      => 'ro',
-  isa     => 'ArrayRef',
-  default => sub { [] },
-  handles => { dirty => 'push' },
+  isa     => 'HashRef',
+  default => sub { {} },
 );
 
 has force => (
@@ -52,6 +51,15 @@ has force => (
   isa     => 'Bool',
   default => 0,
 );
+
+sub dirty {
+  my $self  = shift;
+  my $dirty = $self->_dirty;
+  $dirty->{$_}++ for @_;
+  return $self;
+}
+
+sub dirty_list { sort keys %{ shift->_dirty } }
 
 sub flatten {
   my $self = shift;
@@ -67,10 +75,10 @@ sub step_from_args {
   my @opts = ();
 
   for my $arg (@_) {
-    unless ( ref $arg )            { push @desc, $arg;                 next }
-    if     ( "ARRAY" eq ref $arg ) { push @deps, $self->flatten($arg); next }
-    if     ( "HASH" eq ref $arg )  { push @opts, $arg;                 next }
-    if     ( "CODE" eq ref $arg )  { push @code, $arg;                 next }
+    unless ( ref $arg ) { push @desc, $arg; next }
+    if ( "ARRAY" eq ref $arg ) { push @deps, $self->flatten($arg); next }
+    if ( "HASH" eq ref $arg ) { push @opts, {%$arg}; next }
+    if ( "CODE" eq ref $arg ) { push @code, $arg; next }
     croak "Bad arg";
   }
 
@@ -114,8 +122,8 @@ sub _pop_context {
 }
 
 sub run_task {
-  my $self  = shift;
-  my $name  = shift;
+  my $self = shift;
+  my $name = shift;
 
   return if $self->_done->{$name}++;
   my $task = $self->_tasks->{$name};

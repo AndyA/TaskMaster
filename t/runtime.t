@@ -8,6 +8,19 @@ use Test::Differences;
 
 use TaskMaster::RunTime;
 
+my @names = qw(
+ lib/TaskMaster.pm
+ lib/TaskMaster/Context.pm
+ lib/TaskMaster/Glob.pm
+ lib/TaskMaster/RunTime.pm
+ lib/TaskMaster/Step.pm
+ ref/config.ini
+ t/glob.t
+ t/runtime.t
+ dist.ini
+ paths
+);
+
 {
   my $rt   = TaskMaster::RunTime->new;
   my $done = 0;
@@ -53,6 +66,60 @@ use TaskMaster::RunTime;
   eq_or_diff [@done], [0, 2], "if: correct tasks run";
   $rt->run_task("test");
   eq_or_diff [@done], [0, 2], "if: tasks run once only";
+}
+
+{
+  my $rt     = TaskMaster::RunTime->new;
+  my @ignore = ();
+
+  my $handler = sub {
+    my $ctx = shift;
+    push @ignore, $ctx->name;
+    for my $code ( 1 .. 6 ) {
+      push @ignore, $code if $ctx->should_ignore($code);
+    }
+  };
+
+  $rt->task( "none", $handler );
+  $rt->task( "all", { ignore => [1 .. 6] }, $handler );
+  $rt->task( "odd", { ignore => [1, 5] }, { ignore => [3] }, $handler );
+  $rt->task(
+    "even",
+    ["all", "none", "odd"],
+    { ignore => [2, 4, 6] }, $handler
+  );
+
+  $rt->run_task("even");
+  eq_or_diff [@ignore],
+   ["all", 1, 2, 3, 4, 5, 6, "none", "odd", 1, 3, 5, "even", 2, 4, 6],
+   "ignore: correct codes ignored";
+}
+
+{
+  my $rt   = TaskMaster::RunTime->new;
+  my @done = ();
+
+  my $handler = sub {
+    my $ctx = shift;
+    # Try enough match - which shouldn't polute matches
+    my @t = $ctx->is_dirty("**/*.t");
+    push @done, $ctx->name, [$ctx->matches], [@t];
+  };
+
+  $rt->dirty(@names);
+
+  $rt->task( "pm",  { changed => "**/*.pm" }, $handler );
+  $rt->task( "ini", { changed => "*.ini" },   $handler );
+  $rt->task( "cc",  { changed => "**/*.c" },  $handler );
+  $rt->task( "default", ["pm", "ini", "cc"] );
+
+  $rt->run_task("default");
+
+  my @t = grep { /\.t$/ } @names;
+
+  eq_or_diff [@done],
+   ['pm', [grep { /\.pm$/ } @names], [@t], 'ini', ['dist.ini'], [@t]],
+   "glob: expected tasks run";
 }
 
 done_testing;
