@@ -33,6 +33,11 @@ sub matches()    { rt->matches }
 sub run(@)       { rt->run(@_) }
 sub cmd(@)       { rt->cmd(@_) }
 sub defer(@)     { rt->defer(@_) }
+sub debug(@)     { rt->debug(@_) }
+sub verbose(@)   { rt->verbose(@_) }
+sub mention(@)   { rt->mention(@_) }
+sub warning(@)   { rt->warning(@_) }
+sub error(@)     { rt->error(@_) }
 
 1;
 
