@@ -19,6 +19,7 @@ use base qw( Exporter );
 
 our @EXPORT_OK = qw(
  rt task dirty is_dirty dirty_list matches run cmd defer
+ debug verbose mention warning error
 );
 
 our %EXPORT_TAGS = ( all => [@EXPORT_OK] );
