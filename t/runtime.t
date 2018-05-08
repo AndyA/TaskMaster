@@ -168,6 +168,31 @@ my @names = qw(
   }
 }
 
+{
+  my $rt      = TaskMaster::RunTime->new;
+  my @done    = ();
+  my $handler = sub { push @done, shift->name };
+
+  $rt->task( "A", $handler );
+  $rt->task( "B", $handler );
+
+  $rt->task(
+    "default",
+    ["A"],
+    sub {
+      my $ctx = shift;
+      $handler->($ctx);
+      $rt->run_task("A");
+      $rt->run_task("B");
+    }
+  );
+
+  $rt->run;
+
+  eq_or_diff [@done], ["A", "default", "B"],
+   "recursive run_task: tasks run";
+}
+
 done_testing;
 
 # vim:ts=2:sw=2:et:ft=perl

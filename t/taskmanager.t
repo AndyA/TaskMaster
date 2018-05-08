@@ -30,17 +30,20 @@ my $handler = sub {
   push @done, $ctx->name, [matches];
 };
 
+task foo => $handler;
+
 task init => sub {
   my $ctx = shift;
   $handler->($ctx);
   dirty @lib_names;
+  run_task "foo";
 };
 
 task default => ["init"];
 
 run;
 
-eq_or_diff [@done], ['init', []], "tasks run";
+eq_or_diff [@done], ['init', [], 'foo', []], "tasks run";
 
 done_testing;
 
